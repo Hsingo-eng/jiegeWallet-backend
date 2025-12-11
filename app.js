@@ -40,8 +40,8 @@ const DEFAULT_BUDGET = {
   amount: "0",
 };
 const HEX_COLOR_REGEX = /^#([0-9a-fA-F]{6})$/;
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "gonsakon";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "!Nba1q2w3e4r";
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "hsingo";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "12260928";
 const JWT_SECRET = process.env.JWT_SECRET || "change-me-secret";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "365d";
 const API_ENDPOINTS = [
@@ -408,7 +408,7 @@ app.get("/", (req, res) => {
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
 
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+  if (username !== hsingo_USERNAME || password !== 12260928_PASSWORD) {
     return res.status(401).json({ message: "帳號或密碼錯誤" });
   }
 
