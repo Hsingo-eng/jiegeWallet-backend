@@ -408,21 +408,29 @@ app.get("/", (req, res) => {
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
 
-  // ✅ 順序 1：先印出真相！(不管對錯，先告訴我收到什麼)
-  console.log("=== 登入偵錯開始 ===");
-  console.log("前端傳來的 username:", username);
-  console.log("前端傳來的 password:", password);
-  console.log("系統預期的 ADMIN_USERNAME:", ADMIN_USERNAME);
-  console.log("系統預期的 ADMIN_PASSWORD:", ADMIN_PASSWORD);
-  console.log("兩者類型(前端/系統):", typeof password, "/", typeof ADMIN_PASSWORD);
-  console.log("是否完全相等?", username === ADMIN_USERNAME && password === ADMIN_PASSWORD);
-  console.log("=== 登入偵錯結束 ===");
+  // 1. 強制印出所有資訊 (放在最前面！)
+  console.log("------------------------------------------------");
+  console.log("【登入偵錯】收到請求！");
+  console.log("前端傳來的 username:", username, " (類型:", typeof username, ")");
+  console.log("前端傳來的 password:", password, " (類型:", typeof password, ")");
+  console.log("系統設定的 ADMIN_USERNAME:", ADMIN_USERNAME, " (類型:", typeof ADMIN_USERNAME, ")");
+  console.log("系統設定的 ADMIN_PASSWORD:", ADMIN_PASSWORD, " (類型:", typeof ADMIN_PASSWORD, ")");
 
-  // ✅ 順序 2：印完之後，才進行檢查
-  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: "帳號或密碼錯誤" });
+  // 2. 轉型成字串再比較 (避免 123 !== "123" 的問題)
+  // 這是最關鍵的一步！
+  const inputPwd = String(password);
+  const adminPwd = String(ADMIN_PASSWORD);
+
+  console.log("轉型後比較密碼:", inputPwd, "===", adminPwd, "?", inputPwd === adminPwd);
+  console.log("------------------------------------------------");
+
+  // 3. 使用轉型後的變數進行檢查
+  if (username !== ADMIN_USERNAME || inputPwd !== adminPwd) {
+     console.log("❌ 登入失敗：帳號或密碼不符");
+     return res.status(401).json({ message: "帳號或密碼錯誤" });
   }
 
+  console.log("✅ 登入成功！");
   const token = generateToken({ username });
   res.json({ token, expiresIn: JWT_EXPIRES_IN });
 });
