@@ -13,7 +13,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const SHEET_ID =
-  process.env.GOOGLE_SHEET_ID || "1MeCb_ClcxP-H_e6vYid49l-ayRd0cF-TE_StXRO9dnM";
+  process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
 const TRANSACTION_SHEET_RANGE =
   process.env.GOOGLE_TRANSACTION_RANGE || "'transactions'!A:F";
 const TRANSACTION_COLUMNS = [
