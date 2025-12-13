@@ -408,6 +408,26 @@ app.get("/", (req, res) => {
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
 
+// ↓↓↓↓↓↓ 請加入這段偵錯程式碼 ↓↓↓↓↓↓
+  console.log("=== 登入偵錯開始 ===");
+  console.log("前端傳來的資料 (req.body):", req.body);
+  console.log("系統讀到的帳號 (username):", username);
+  console.log("系統讀到的密碼 (password):", password);
+  console.log("系統正確的帳號 (ADMIN_USERNAME):", ADMIN_USERNAME);
+  console.log("系統正確的密碼 (ADMIN_PASSWORD):", ADMIN_PASSWORD);
+  console.log("是否相等?", username === ADMIN_USERNAME && password === ADMIN_PASSWORD);
+  console.log("=== 登入偵錯結束 ===");
+  // ↑↑↑↑↑↑ 請加入這段偵錯程式碼 ↑↑↑↑↑↑
+
+  // 修改成這樣：使用上方定義好的常數
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ message: "帳號或密碼錯誤" });
+  }
+
+  const token = generateToken({ username });
+  res.json({ token, expiresIn: JWT_EXPIRES_IN });
+});
+
   // 修改成這樣：使用上方定義好的常數
   if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ message: "帳號或密碼錯誤" });
