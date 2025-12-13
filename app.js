@@ -408,7 +408,8 @@ app.get("/", (req, res) => {
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
 
-  if (username !== "hsingo" || password !== "12260928") {
+  // 修改成這樣：使用上方定義好的常數
+  if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
     return res.status(401).json({ message: "帳號或密碼錯誤" });
   }
 
