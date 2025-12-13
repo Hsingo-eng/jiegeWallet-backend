@@ -408,7 +408,7 @@ app.get("/", (req, res) => {
 app.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};
 
-  if (username !== hsingo || password !== 12260928) {
+  if (username !== "hsingo" || password !== 12260928) {
     return res.status(401).json({ message: "帳號或密碼錯誤" });
   }
 
