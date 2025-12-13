@@ -14,10 +14,22 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
 
-// 🔴 修改重點 1：欄位順序定義 (這裡一定要跟 Google Sheet 一模一樣)
-// A=id, B=date, C=categories, D=title, E=text
+// A=id, B=date, C=categories, D=title, E=text, E=reply
 const TRANSACTION_SHEET_RANGE = "'transactions'!A:E";
-const TRANSACTION_COLUMNS = ["id", "date", "categories", "title", "text"];
+const TRANSACTION_COLUMNS = ["id", "date", "categories", "title", "text", "reply"];
+const updateRow = async (sheets, rowIndex, columns, payload) => {
+  const row = columns.map((key) => payload[key] || ""); // 照順序填入
+  
+  // 算出範圍 (例如 A2:F2)
+  const range = `'transactions'!A${rowIndex}:${String.fromCharCode(64 + columns.length)}${rowIndex}`;
+  
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range,
+    valueInputOption: "USER_ENTERED",
+    requestBody: { values: [row] },
+  });
+};
 
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "hsingo";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "12260928";
@@ -87,7 +99,6 @@ app.post("/auth/login", (req, res) => {
 // 🟢 新增資料 API
 app.post("/api/transactions", async (req, res) => {
   try {
-    // 🔴 修改重點 2：資料對應 (把前端傳來的東西，塞進新的欄位名稱)
     const payload = {
       id: `txn-${Date.now()}`,
       date: req.body.date,
@@ -123,22 +134,15 @@ app.get("/api/transactions", async (req, res) => {
 
     const transactions = normalizeRows(response.data.values);
     
-    // 🔴 修改重點 3：回傳給前端時，要把名字換回前端看得懂的樣子
     const data = transactions.map(row => ({
        id: row.id,
        date: row.date,
-       
-       // Sheet 的 'text' (E欄) -> 轉回 'amount' 讓前端顯示內容
        amount: row.text,      
-       
        title: row.title,
-       
-       // Sheet 的 'categories' (C欄) -> 轉回 'category'
        category: row.categories,
-       
-       // 為了相容性補上的假欄位
        category_name: row.categories,
-       category_color_hex: "#333333"
+       category_color_hex: "#333333",
+       reply: row.reply // 👈 把回覆內容傳給前端
     }));
 
     res.json({ data });
@@ -156,3 +160,54 @@ app.get("/api/categories", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
+
+// PUT /api/transactions/:id (用來儲存回覆)
+app.put("/api/transactions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sheets = getSheetsClient();
+    
+    // 1. 先去 Sheet 找這筆資料在哪一行
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: TRANSACTION_SHEET_RANGE,
+    });
+    
+    const rows = response.data.values || [];
+    let rowIndex = -1;
+    let currentRowData = {};
+
+    // 尋找對應 ID 的行數 (跳過標題列，所以從 1 開始)
+    for (let i = 1; i < rows.length; i++) {
+        if (rows[i][0] === id) { // ID 在第一欄 (index 0)
+            rowIndex = i + 1; // Google Sheet 行數從 1 開始
+            // 把舊資料抓出來，以免被蓋掉
+            currentRowData = TRANSACTION_COLUMNS.reduce((acc, col, idx) => {
+                acc[col] = rows[i][idx];
+                return acc;
+            }, {});
+            break;
+        }
+    }
+
+    if (rowIndex === -1) {
+        return res.status(404).json({ message: "找不到這筆資料" });
+    }
+
+    // 2. 合併新舊資料 (只更新傳進來的欄位，例如 reply)
+    const payload = {
+        ...currentRowData,
+        ...req.body // 這裡會包含 reply
+    };
+
+    // 3. 寫回 Google Sheet
+    await updateRow(sheets, rowIndex, TRANSACTION_COLUMNS, payload);
+
+    res.json({ message: "更新成功", data: payload });
+
+  } catch (error) {
+    console.error("更新錯誤:", error);
+    res.status(500).json({ message: "更新失敗", error: error.message });
+  }
+});
+
