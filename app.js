@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
 
 // A=id, B=date, C=categories, D=title, E=text, E=reply
-const TRANSACTION_SHEET_RANGE = "'transactions'!A:E";
+const TRANSACTION_SHEET_RANGE = "'transactions'!A:F";
 const TRANSACTION_COLUMNS = ["id", "date", "categories", "title", "text", "reply"];
 const updateRow = async (sheets, rowIndex, columns, payload) => {
   const row = columns.map((key) => payload[key] || ""); // 照順序填入
@@ -123,7 +123,7 @@ app.post("/api/transactions", async (req, res) => {
   }
 });
 
-// 🟢 讀取資料 API
+// 讀取資料 API
 app.get("/api/transactions", async (req, res) => {
   try {
     const sheets = getSheetsClient();
@@ -142,7 +142,7 @@ app.get("/api/transactions", async (req, res) => {
        category: row.categories,
        category_name: row.categories,
        category_color_hex: "#333333",
-       reply: row.reply // 👈 把回覆內容傳給前端
+       reply: row.reply // 把回覆內容傳給前端
     }));
 
     res.json({ data });
