@@ -432,9 +432,6 @@ app.post("/auth/login", (req, res) => {
 });
 
 
-  const token = generateToken({ username });
-  res.json({ token, expiresIn: JWT_EXPIRES_IN });
-
 
 const listTransactionsHandler = async (req, res) => {
   try {
