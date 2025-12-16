@@ -211,3 +211,72 @@ app.put("/api/transactions/:id", async (req, res) => {
   }
 });
 
+// 新增：刪除資料 API
+app.delete("/api/transactions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sheets = getSheetsClient();
+
+    // 1. 先取得試算表資訊，為了拿到 "transactions" 工作表的 sheetId (整數 ID)
+    const spreadsheet = await sheets.spreadsheets.get({
+      spreadsheetId: SHEET_ID
+    });
+    
+    const sheet = spreadsheet.data.sheets.find(
+      s => s.properties.title === 'transactions' // ⚠️ 請確認你的工作表名稱真的是 transactions
+    );
+
+    if (!sheet) {
+      return res.status(404).json({ message: "找不到 transactions 工作表" });
+    }
+    
+    const sheetId = sheet.properties.sheetId;
+
+    // 2. 找出要刪除的是哪一行
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: TRANSACTION_SHEET_RANGE,
+    });
+
+    const rows = response.data.values || [];
+    let rowIndex = -1;
+
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === id) {
+        rowIndex = i; // 這裡我們需要的是 0-based index (API 用)，所以不用 +1
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      return res.status(404).json({ message: "找不到這筆資料" });
+    }
+
+    // 3. 呼叫 batchUpdate 執行整行刪除 (deleteDimension)
+    // 這樣刪除後，下方的資料會自動往上補，不會留白
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        requests: [
+          {
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: "ROWS",
+                startIndex: rowIndex,     // 開始行 (包含)
+                endIndex: rowIndex + 1    // 結束行 (不包含)
+              }
+            }
+          }
+        ]
+      }
+    });
+
+    res.json({ message: "刪除成功" });
+
+  } catch (error) {
+    console.error("刪除錯誤:", error);
+    res.status(500).json({ message: "刪除失敗", error: error.message });
+  }
+});
+
