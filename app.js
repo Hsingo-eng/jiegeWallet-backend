@@ -7,22 +7,21 @@ const { google } = require("googleapis");
 const http = require("http");
 const { Server } = require("socket.io");
 
+dotenv.config();
+
+// 1. 初始化 Express
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// 2. 初始化 HTTP Server 和 Socket.io (關鍵順序)
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // 允許所有網域連線 (開發方便)
+    origin: "*", // 允許所有網域連線
     methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
-
-dotenv.config();
-
-const app = express();
-app.use(cors());
-app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
@@ -30,6 +29,7 @@ const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1
 // A=id, B=date, C=categories, D=title, E=text, E=reply
 const TRANSACTION_SHEET_RANGE = "'transactions'!A:F";
 const TRANSACTION_COLUMNS = ["id", "date", "categories", "title", "text", "reply"];
+
 const updateRow = async (sheets, rowIndex, columns, payload) => {
   const row = columns.map((key) => payload[key] || ""); // 照順序填入
   
@@ -115,16 +115,12 @@ app.post("/api/transactions", async (req, res) => {
     const payload = {
       id: `txn-${Date.now()}`,
       date: req.body.date,
-      
-      // 前端傳來的 'category' -> 寫入 Sheet 的 'categories' (C欄)
       categories: req.body.category || "一般",
-      
-      // 前端傳來的 'title' -> 寫入 Sheet 的 'title' (D欄)
       title: req.body.title,
-      
-      // 前端傳來的 'amount' (文字內容) -> 寫入 Sheet 的 'text' (E欄)
       text: req.body.amount 
     };
+    
+    // 廣播
     io.emit("transaction_update", { type: "add", user: "有人", msg: "新增了一筆好笑紀錄！" });
 
     const sheets = getSheetsClient();
@@ -156,7 +152,7 @@ app.get("/api/transactions", async (req, res) => {
        category: row.categories,
        category_name: row.categories,
        category_color_hex: "#333333",
-       reply: row.reply // 把回覆內容傳給前端
+       reply: row.reply 
     }));
 
     res.json({ data });
@@ -166,16 +162,12 @@ app.get("/api/transactions", async (req, res) => {
   }
 });
 
-// 假類別 API (防止報錯)
+// 假類別 API
 app.get("/api/categories", (req, res) => {
     res.json({ data: [] });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-// PUT /api/transactions/:id (用來儲存回覆)
+// PUT API (更新)
 app.put("/api/transactions/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -191,11 +183,9 @@ app.put("/api/transactions/:id", async (req, res) => {
     let rowIndex = -1;
     let currentRowData = {};
 
-    // 尋找對應 ID 的行數 (跳過標題列，所以從 1 開始)
     for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) { // ID 在第一欄 (index 0)
-            rowIndex = i + 1; // Google Sheet 行數從 1 開始
-            // 把舊資料抓出來，以免被蓋掉
+        if (rows[i][0] === id) {
+            rowIndex = i + 1; 
             currentRowData = TRANSACTION_COLUMNS.reduce((acc, col, idx) => {
                 acc[col] = rows[i][idx];
                 return acc;
@@ -208,14 +198,16 @@ app.put("/api/transactions/:id", async (req, res) => {
         return res.status(404).json({ message: "找不到這筆資料" });
     }
 
-    // 2. 合併新舊資料 (只更新傳進來的欄位，例如 reply)
+    // 2. 合併新舊資料
     const payload = {
         ...currentRowData,
-        ...req.body // 這裡會包含 reply
+        ...req.body 
     };
+    
+    // 廣播
     io.emit("transaction_update", { type: "update", user: "有人", msg: "修改了紀錄或回覆！" });
 
-    // 3. 寫回 Google Sheet
+    // 3. 寫回
     await updateRow(sheets, rowIndex, TRANSACTION_COLUMNS, payload);
 
     res.json({ message: "更新成功", data: payload });
@@ -226,19 +218,18 @@ app.put("/api/transactions/:id", async (req, res) => {
   }
 });
 
-// 新增：刪除資料 API
+// DELETE API (刪除)
 app.delete("/api/transactions/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const sheets = getSheetsClient();
 
-    // 1. 先取得試算表資訊，為了拿到 "transactions" 工作表的 sheetId (整數 ID)
     const spreadsheet = await sheets.spreadsheets.get({
       spreadsheetId: SHEET_ID
     });
     
     const sheet = spreadsheet.data.sheets.find(
-      s => s.properties.title === 'transactions' // ⚠️ 請確認你的工作表名稱真的是 transactions
+      s => s.properties.title === 'transactions'
     );
 
     if (!sheet) {
@@ -247,7 +238,6 @@ app.delete("/api/transactions/:id", async (req, res) => {
     
     const sheetId = sheet.properties.sheetId;
 
-    // 2. 找出要刪除的是哪一行
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
       range: TRANSACTION_SHEET_RANGE,
@@ -258,7 +248,7 @@ app.delete("/api/transactions/:id", async (req, res) => {
 
     for (let i = 1; i < rows.length; i++) {
       if (rows[i][0] === id) {
-        rowIndex = i; // 這裡我們需要的是 0-based index (API 用)，所以不用 +1
+        rowIndex = i; 
         break;
       }
     }
@@ -267,8 +257,6 @@ app.delete("/api/transactions/:id", async (req, res) => {
       return res.status(404).json({ message: "找不到這筆資料" });
     }
 
-    // 3. 呼叫 batchUpdate 執行整行刪除 (deleteDimension)
-    // 這樣刪除後，下方的資料會自動往上補，不會留白
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId: SHEET_ID,
       requestBody: {
@@ -278,14 +266,16 @@ app.delete("/api/transactions/:id", async (req, res) => {
               range: {
                 sheetId: sheetId,
                 dimension: "ROWS",
-                startIndex: rowIndex,     // 開始行 (包含)
-                endIndex: rowIndex + 1    // 結束行 (不包含)
+                startIndex: rowIndex,     
+                endIndex: rowIndex + 1    
               }
             }
           }
         ]
       }
     });
+    
+    // 廣播
     io.emit("transaction_update", { type: "delete", user: "有人", msg: "刪除了一筆紀錄..." });
 
     res.json({ message: "刪除成功" });
@@ -294,5 +284,10 @@ app.delete("/api/transactions/:id", async (req, res) => {
     console.error("刪除錯誤:", error);
     res.status(500).json({ message: "刪除失敗", error: error.message });
   }
+});
+
+// ⚠️ 重要：最後要改用 server.listen，而不是 app.listen
+server.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
 
