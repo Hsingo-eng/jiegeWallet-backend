@@ -96,7 +96,7 @@ app.post("/auth/login", (req, res) => {
   res.json({ token, expiresIn: JWT_EXPIRES_IN });
 });
 
-// 🟢 新增資料 API
+// 新增資料 API
 app.post("/api/transactions", async (req, res) => {
   try {
     const payload = {
@@ -116,7 +116,7 @@ app.post("/api/transactions", async (req, res) => {
     const sheets = getSheetsClient();
     await appendRow(sheets, TRANSACTION_SHEET_RANGE, TRANSACTION_COLUMNS, payload);
     
-    res.status(201).json({ message: "成功！", data: payload });
+    res.status(201).json({ message: "成功囉！", data: payload });
   } catch (error) {
     console.error("寫入錯誤:", error);
     res.status(500).json({ message: "寫入失敗", error: error.message });
