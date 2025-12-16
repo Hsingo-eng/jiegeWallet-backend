@@ -4,6 +4,19 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
 const { google } = require("googleapis");
+const http = require("http");
+const { Server } = require("socket.io");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*", // 允許所有網域連線 (開發方便)
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
 
 dotenv.config();
 
@@ -112,6 +125,7 @@ app.post("/api/transactions", async (req, res) => {
       // 前端傳來的 'amount' (文字內容) -> 寫入 Sheet 的 'text' (E欄)
       text: req.body.amount 
     };
+    io.emit("transaction_update", { type: "add", user: "有人", msg: "新增了一筆好笑紀錄！" });
 
     const sheets = getSheetsClient();
     await appendRow(sheets, TRANSACTION_SHEET_RANGE, TRANSACTION_COLUMNS, payload);
@@ -199,6 +213,7 @@ app.put("/api/transactions/:id", async (req, res) => {
         ...currentRowData,
         ...req.body // 這裡會包含 reply
     };
+    io.emit("transaction_update", { type: "update", user: "有人", msg: "修改了紀錄或回覆！" });
 
     // 3. 寫回 Google Sheet
     await updateRow(sheets, rowIndex, TRANSACTION_COLUMNS, payload);
@@ -271,6 +286,7 @@ app.delete("/api/transactions/:id", async (req, res) => {
         ]
       }
     });
+    io.emit("transaction_update", { type: "delete", user: "有人", msg: "刪除了一筆紀錄..." });
 
     res.json({ message: "刪除成功" });
 
