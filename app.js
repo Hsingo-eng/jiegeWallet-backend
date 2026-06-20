@@ -23,13 +23,6 @@ const io = new Server(server, {
   }
 });
 
-// 確保這裡用的是 const port (小寫)
-const port = process.env.PORT || 10000;
-
-// 下面這裡也一律使用小寫 port
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server is running on port ${port}`);
-});
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
 
 // A=id, B=date, C=categories, D=title, E=text, E=reply
@@ -292,7 +285,8 @@ app.delete("/api/transactions/:id", async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+const port = process.env.PORT || 10000;
 
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Server is running on port ${port}`);
+});
