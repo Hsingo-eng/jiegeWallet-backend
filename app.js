@@ -23,9 +23,10 @@ const io = new Server(server, {
   }
 });
 
+// 確保這裡用的是 const port (小寫)
 const port = process.env.PORT || 10000;
 
-// 注意：加上 '0.0.0.0' 可以確保 Render 能正確綁定 IP
+// 下面這裡也一律使用小寫 port
 app.listen(port, '0.0.0.0', () => {
     console.log(`Server is running on port ${port}`);
 });
