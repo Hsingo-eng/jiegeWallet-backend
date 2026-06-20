@@ -23,7 +23,12 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
+
+// 注意：加上 '0.0.0.0' 可以確保 Render 能正確綁定 IP
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is running on port ${port}`);
+});
 const SHEET_ID = process.env.GOOGLE_SHEET_ID || "1EryOn3o0VFNWGywg_ZSPrlAHQd42K1I2LmYe8EYpn0s";
 
 // A=id, B=date, C=categories, D=title, E=text, E=reply
@@ -286,7 +291,6 @@ app.delete("/api/transactions/:id", async (req, res) => {
   }
 });
 
-// ⚠️ 重要：最後要改用 server.listen，而不是 app.listen
 server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
